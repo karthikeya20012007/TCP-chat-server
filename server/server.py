@@ -3,17 +3,17 @@ import threading
 
 from shared.config import HOST, PORT, BUFFER_SIZE
 
-clients = []
+clients = {}
 
 
 def broadcast(message, sender_socket):
-    for client in clients:
+    for client in list(clients.keys()):
         if client != sender_socket:
             try:
                 client.send(message)
 
             except:
-                clients.remove(client)
+                del clients[client]
                 client.close()
 
 
@@ -25,18 +25,28 @@ def handle_client(client_socket, client_address):
             message = client_socket.recv(BUFFER_SIZE)
 
             if not message:
+                username = clients[client_socket]
+
                 print(f"[DISCONNECTED] {client_address} disconnected.")
 
-                clients.remove(client_socket)
+                broadcast(
+                    f"[SYSTEM] {username} left the chat.".encode(),
+                    client_socket
+                )
+
+                if client_socket in clients:
+                    del clients[client_socket]
 
                 break
 
             decoded_message = message.decode()
 
-            print(f"[MESSAGE RECEIVED] {client_address}: {decoded_message}")
+            username = clients[client_socket]
+
+            print(f"[MESSAGE RECEIVED] {username}: {decoded_message}")
 
             broadcast(
-                f"{client_address}: {decoded_message}".encode(),
+                f"{username}: {decoded_message}".encode(),
                 client_socket
             )
 
@@ -44,7 +54,14 @@ def handle_client(client_socket, client_address):
             print(f"[ERROR] Connection lost with {client_address}")
 
             if client_socket in clients:
-                clients.remove(client_socket)
+                username = clients[client_socket]
+
+                broadcast(
+                    f"[SYSTEM] {username} left the chat.".encode(),
+                    client_socket
+                )
+
+                del clients[client_socket]
 
             break
 
@@ -63,7 +80,14 @@ def start_server():
     while True:
         client_socket, client_address = server_socket.accept()
 
-        clients.append(client_socket)
+        username = client_socket.recv(BUFFER_SIZE).decode()
+
+        clients[client_socket] = username
+        
+        broadcast(
+            f"[SYSTEM] {username} joined the chat.".encode(),
+            client_socket
+        )
 
         client_thread = threading.Thread(
             target=handle_client,

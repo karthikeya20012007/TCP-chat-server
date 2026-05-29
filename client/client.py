@@ -23,6 +23,9 @@ def start_client():
 
     client_socket.connect((HOST, PORT))
     
+    username = input("Enter your username: ")
+    client_socket.sendall(username.encode())
+    
     receive_thread = threading.Thread(
         target=receive_messages,
         args=(client_socket,)
@@ -32,7 +35,7 @@ def start_client():
 
     try:
         while True:
-            message = input("You: ")
+            message = input()
 
             if message.lower() == "exit":
                 print("[DISCONNECTING] Closing connection.")
