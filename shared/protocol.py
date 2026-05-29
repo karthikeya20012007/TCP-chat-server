@@ -2,11 +2,13 @@ import json
 
 
 def create_message(message_type, sender, content):
-    return json.dumps({
+    message = {
         "type": message_type,
         "sender": sender,
         "content": content
-    }).encode()
+    }
+
+    return (json.dumps(message) + "\n").encode()
 
 
 def parse_message(message):

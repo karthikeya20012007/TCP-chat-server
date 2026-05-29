@@ -6,36 +6,46 @@ from shared.config import HOST, PORT
 
 
 def receive_messages(client_socket):
+    buffer = ""
+
     while True:
         try:
-            message = client_socket.recv(1024)
+            data = client_socket.recv(1024)
 
-            if not message:
+            if not data:
                 print("[SERVER DISCONNECTED]")
                 break
 
-            parsed_message = parse_message(message)
+            buffer += data.decode()
 
-            message_type = parsed_message["type"]
-            sender = parsed_message["sender"]
-            content = parsed_message["content"]
+            while "\n" in buffer:
+                message, buffer = buffer.split("\n", 1)
 
-            if message_type == "chat":
-                print(f"\n{sender}: {content}")
+                parsed_message = parse_message(message.encode())
 
-            elif message_type == "system":
-                print(f"\n[SYSTEM] {content}")
+                message_type = parsed_message["type"]
+                sender = parsed_message["sender"]
+                content = parsed_message["content"]
 
-            elif message_type == "user_list":
-                print("\n[ONLINE USERS]")
+                if message_type == "chat":
+                    print(f"\n{sender}: {content}")
 
-                for user in content:
-                    print(f"- {user}")
+                elif message_type == "system":
+                    print(f"\n[SYSTEM] {content}")
 
-        except:
+                elif message_type == "history":
+                    print(f"\n[HISTORY] {sender}: {content}")
+
+                elif message_type == "user_list":
+                    print("\n[ONLINE USERS]")
+
+                    for user in content:
+                        print(f"- {user}")
+
+        except Exception as error:
+            print(error)
             print("[ERROR] Connection lost.")
             break
-
 
 def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

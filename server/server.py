@@ -5,6 +5,8 @@ from shared.protocol import create_message, parse_message
 
 from shared.config import HOST, PORT, BUFFER_SIZE
 
+from server.database import save_message, get_recent_messages
+
 clients = {}
 
 
@@ -28,6 +30,18 @@ def send_user_list(client_socket):
     )
 
     client_socket.sendall(user_list_message)
+
+def send_chat_history(client_socket):
+    recent_messages = get_recent_messages()
+
+    for sender, content in recent_messages:
+        history_message = create_message(
+            "history",
+            sender,
+            content
+        )
+
+        client_socket.sendall(history_message)
 
 def handle_client(client_socket, client_address):
     print(f"[NEW CONNECTION] {client_address} connected.")
@@ -62,7 +76,9 @@ def handle_client(client_socket, client_address):
             content = parsed_message["content"]
 
             print(f"[MESSAGE RECEIVED] {sender}: {content}")
-
+            
+            save_message(sender, content)
+            
             broadcast(
                 create_message(
                     "chat",
@@ -111,6 +127,7 @@ def start_server():
         clients[client_socket] = username
         
         send_user_list(client_socket)
+        send_chat_history(client_socket)
         
         broadcast(
             create_message(
