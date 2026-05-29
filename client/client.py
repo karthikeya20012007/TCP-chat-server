@@ -5,7 +5,7 @@ from shared.protocol import create_message, parse_message
 from shared.config import HOST, PORT
 
 
-def receive_messages(client_socket):
+def receive_messages(client_socket, buffer=""):
     buffer = ""
 
     while True:
@@ -35,6 +35,9 @@ def receive_messages(client_socket):
 
                 elif message_type == "history":
                     print(f"\n[HISTORY] {sender}: {content}")
+                    
+                elif message_type == "auth":
+                    print(f"\n[AUTH] {content}")
 
                 elif message_type == "user_list":
                     print("\n[ONLINE USERS]")
@@ -50,15 +53,81 @@ def receive_messages(client_socket):
 def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    client_socket.connect((HOST, PORT))
+    try:
+        client_socket.connect((HOST, PORT))
 
-    username = input("Enter your username: ")
+    except Exception as error:
+        print(error)
+        return
 
-    client_socket.sendall(username.encode())
+    authenticated = False
+    username = ""
+    buffer = ""
+
+    while not authenticated:
+        print("1. Register")
+        print("2. Login")
+
+        choice = input("Select option: ")
+
+        username = input("Username: ")
+        password = input("Password: ")
+
+        if choice == "1":
+            auth_message = create_message(
+                "register",
+                username,
+                password
+            )
+
+        elif choice == "2":
+            auth_message = create_message(
+                "login",
+                username,
+                password
+            )
+
+        else:
+            print("[ERROR] Invalid option.")
+            continue
+
+        client_socket.sendall(auth_message)
+
+        while True:
+            while "\n" not in buffer:
+                data = client_socket.recv(1024)
+
+                if not data:
+                    print("[SERVER DISCONNECTED]")
+                    return
+
+                buffer += data.decode()
+
+            message, buffer = buffer.split("\n", 1)
+
+            parsed_response = parse_message(
+                message.encode()
+            )
+
+            message_type = parsed_response["type"]
+            content = parsed_response["content"]
+
+            if message_type != "auth":
+                continue
+
+            print(f"\n[AUTH] {content}")
+
+            if content in [
+                "Registration successful.",
+                "Login successful."
+            ]:
+                authenticated = True
+
+            break
 
     receive_thread = threading.Thread(
         target=receive_messages,
-        args=(client_socket,)
+        args=(client_socket,buffer)
     )
 
     receive_thread.start()
@@ -85,7 +154,6 @@ def start_client():
     finally:
         client_socket.close()
         print("[CONNECTION CLOSED]")
-
-
 if __name__ == "__main__":
     start_client()
+        

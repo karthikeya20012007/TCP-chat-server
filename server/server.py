@@ -5,7 +5,7 @@ from shared.protocol import create_message, parse_message
 
 from shared.config import HOST, PORT, BUFFER_SIZE
 
-from server.database import save_message, get_recent_messages
+from server.database import save_message, get_recent_messages, register_user, login_user
 
 clients = {}
 
@@ -45,6 +45,8 @@ def send_chat_history(client_socket):
 
 def handle_client(client_socket, client_address):
     print(f"[NEW CONNECTION] {client_address} connected.")
+    send_user_list(client_socket)
+    send_chat_history(client_socket)
 
     while True:
         try:
@@ -109,6 +111,81 @@ def handle_client(client_socket, client_address):
 
     client_socket.close()
 
+def authenticate_client(client_socket):
+    while True:
+        data = client_socket.recv(BUFFER_SIZE)
+
+        if not data:
+            return None
+
+        try:
+            credentials = parse_message(data)
+
+        except Exception:
+            return None
+
+        message_type = credentials["type"]
+        username = credentials["sender"]
+        password = credentials["content"]
+
+        if message_type == "register":
+            success = register_user(username, password)
+
+            if not success:
+                client_socket.sendall(
+                    create_message(
+                        "auth",
+                        "SYSTEM",
+                        "Username already exists."
+                    )
+                )
+
+                continue
+
+            client_socket.sendall(
+                create_message(
+                    "auth",
+                    "SYSTEM",
+                    "Registration successful."
+                )
+            )
+
+            return username
+
+        elif message_type == "login":
+            success = login_user(username, password)
+
+            if not success:
+                client_socket.sendall(
+                    create_message(
+                        "auth",
+                        "SYSTEM",
+                        "Invalid username or password."
+                    )
+                )
+
+                continue
+
+            if username in clients.values():
+                client_socket.sendall(
+                    create_message(
+                        "auth",
+                        "SYSTEM",
+                        "User already logged in."
+                    )
+                )
+
+                continue
+
+            client_socket.sendall(
+                create_message(
+                    "auth",
+                    "SYSTEM",
+                    "Login successful."
+                )
+            )
+
+            return username
 
 def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -122,12 +199,13 @@ def start_server():
     while True:
         client_socket, client_address = server_socket.accept()
 
-        username = client_socket.recv(BUFFER_SIZE).decode()
+        username = authenticate_client(client_socket)
+
+        if username is None:
+            client_socket.close()
+            continue
 
         clients[client_socket] = username
-        
-        send_user_list(client_socket)
-        send_chat_history(client_socket)
         
         broadcast(
             create_message(

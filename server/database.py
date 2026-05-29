@@ -1,5 +1,7 @@
 import psycopg2
 
+import bcrypt
+
 from shared.config import (
     DB_HOST,
     DB_NAME,
@@ -40,3 +42,57 @@ def get_recent_messages(limit=10):
     )
 
     return cursor.fetchall()
+
+def register_user(username, password):
+    cursor.execute(
+        """
+        SELECT username
+        FROM users
+        WHERE username = %s
+        """,
+        (username,)
+    )
+
+    existing_user = cursor.fetchone()
+
+    if existing_user:
+        return False
+
+    password_hash = bcrypt.hashpw(
+        password.encode(),
+        bcrypt.gensalt()
+    ).decode()
+
+    cursor.execute(
+        """
+        INSERT INTO users (username, password_hash)
+        VALUES (%s, %s)
+        """,
+        (username, password_hash)
+    )
+
+    connection.commit()
+
+    return True
+
+def login_user(username, password):
+    cursor.execute(
+        """
+        SELECT password_hash
+        FROM users
+        WHERE username = %s
+        """,
+        (username,)
+    )
+
+    user = cursor.fetchone()
+
+    if not user:
+        return False
+
+    stored_password_hash = user[0]
+
+    return bcrypt.checkpw(
+        password.encode(),
+        stored_password_hash.encode()
+    )
