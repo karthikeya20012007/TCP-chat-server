@@ -1,6 +1,8 @@
 import socket
 import threading
 
+from shared.protocol import create_message, parse_message
+
 from shared.config import HOST, PORT, BUFFER_SIZE
 
 clients = {}
@@ -16,6 +18,16 @@ def broadcast(message, sender_socket):
                 del clients[client]
                 client.close()
 
+def send_user_list(client_socket):
+    usernames = list(clients.values())
+
+    user_list_message = create_message(
+        "user_list",
+        "SYSTEM",
+        usernames
+    )
+
+    client_socket.sendall(user_list_message)
 
 def handle_client(client_socket, client_address):
     print(f"[NEW CONNECTION] {client_address} connected.")
@@ -30,7 +42,11 @@ def handle_client(client_socket, client_address):
                 print(f"[DISCONNECTED] {client_address} disconnected.")
 
                 broadcast(
-                    f"[SYSTEM] {username} left the chat.".encode(),
+                    create_message(
+                        "system",
+                        "SYSTEM",
+                        f"{username} left the chat."
+                    ),
                     client_socket
                 )
 
@@ -39,14 +55,20 @@ def handle_client(client_socket, client_address):
 
                 break
 
-            decoded_message = message.decode()
+            parsed_message = parse_message(message)
 
-            username = clients[client_socket]
+            message_type = parsed_message["type"]
+            sender = parsed_message["sender"]
+            content = parsed_message["content"]
 
-            print(f"[MESSAGE RECEIVED] {username}: {decoded_message}")
+            print(f"[MESSAGE RECEIVED] {sender}: {content}")
 
             broadcast(
-                f"{username}: {decoded_message}".encode(),
+                create_message(
+                    "chat",
+                    sender,
+                    content
+                ),
                 client_socket
             )
 
@@ -57,7 +79,11 @@ def handle_client(client_socket, client_address):
                 username = clients[client_socket]
 
                 broadcast(
-                    f"[SYSTEM] {username} left the chat.".encode(),
+                    create_message(
+                        "system",
+                        "SYSTEM",
+                        f"{username} left the chat."
+                    ),
                     client_socket
                 )
 
@@ -84,8 +110,14 @@ def start_server():
 
         clients[client_socket] = username
         
+        send_user_list(client_socket)
+        
         broadcast(
-            f"[SYSTEM] {username} joined the chat.".encode(),
+            create_message(
+                "system",
+                "SYSTEM",
+                f"{username} joined the chat."
+            ),
             client_socket
         )
 
