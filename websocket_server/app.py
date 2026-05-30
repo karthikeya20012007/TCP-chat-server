@@ -186,31 +186,44 @@ def login(data: AuthRequest):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+
+    print("✅ WebSocket accepted")
+
     username = None
 
     try:
         while True:
             raw_data = await websocket.receive_text()
+
+            print("📩 Raw data:", raw_data)
+
             data = json.loads(raw_data)
+
             message_type = data.get("type")
 
             if message_type == "join":
                 username = data.get("username")
+
                 connected_clients[websocket] = username
+
                 print(f"[CONNECTED] {username}")
 
                 await send_chat_history(websocket)
+
                 await broadcast_online_users()
-                
+
                 join_message = {
                     "type": "chat",
                     "message": f"{username} joined the chat"
                 }
+
                 await broadcast_chat_message(join_message)
 
             elif message_type == "chat":
                 sender = data.get("username")
+
                 content = data.get("content")
+
                 print(f"[MESSAGE] {sender}: {content}")
 
                 save_message(sender, content)
@@ -219,17 +232,30 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "chat",
                     "message": f"{sender}: {content}"
                 }
+
                 await broadcast_chat_message(chat_message)
 
     except WebSocketDisconnect:
+        print("❌ WebSocket disconnected")
+
         if websocket in connected_clients:
             disconnected_user = connected_clients[websocket]
-            print(f"[DISCONNECTED] {disconnected_user}")
+
             del connected_clients[websocket]
-            
+
             leave_message = {
                 "type": "chat",
                 "message": f"{disconnected_user} left the chat"
             }
+
             await broadcast_chat_message(leave_message)
+
             await broadcast_online_users()
+
+    except Exception as e:
+        print("🔥 WebSocket error:", e)
+        
+        
+@app.get("/")
+async def root():
+    return {"status": "running"}
