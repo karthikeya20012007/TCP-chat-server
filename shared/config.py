@@ -6,7 +6,7 @@ load_dotenv()
 
 HOST = os.getenv("HOST")
 PORT = int(os.getenv("PORT"))
-BUFFER_SIZE = int(os.getenv("BUFFER_SIZE"))
+BUFFER_SIZE = 1024
 
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
