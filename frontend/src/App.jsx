@@ -24,7 +24,7 @@ function App() {
 
   const connectWebSocket = () => {
     const ws = new WebSocket(
-      "ws://localhost:8000/ws"
+      "wss://tcp-chat-server-ok1t.onrender.com/ws"
     );
 
     ws.onopen = () => {
@@ -81,7 +81,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/login",
+        "https://tcp-chat-server-ok1t.onrender.com/login",
         {
           method: "POST",
 
@@ -131,7 +131,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/register",
+        "https://tcp-chat-server-ok1t.onrender.com/register",
         {
           method: "POST",
 
