@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 import bcrypt
 
-import psycopg2
 import json
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,11 +33,14 @@ class AuthRequest(BaseModel):
 
 connected_clients = {}
 
+import os
+import psycopg2
+
 connection = psycopg2.connect(
-    host=DB_HOST,
-    database=DB_NAME,
-    user=DB_USER,
-    password=DB_PASSWORD,
+    host=os.environ.get("DB_HOST"),
+    database=os.environ.get("DB_NAME"),
+    user=os.environ.get("DB_USER"),
+    password=os.environ.get("DB_PASSWORD"),
     sslmode="require"
 )
 
