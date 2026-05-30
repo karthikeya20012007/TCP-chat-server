@@ -39,6 +39,7 @@ connection = psycopg2.connect(
     database=DB_NAME,
     user=DB_USER,
     password=DB_PASSWORD
+    sslmode="require"
 )
 
 cursor = connection.cursor()
