@@ -28,12 +28,7 @@ function App() {
     );
 
     ws.onopen = () => {
-      ws.send(
-        JSON.stringify({
-          type: "join",
-          username: tempUsername
-        })
-      );
+      console.log("WebSocket connected");
     };
 
     ws.onmessage = (event) => {
@@ -156,9 +151,11 @@ function App() {
         return;
       }
 
-      setAuthMessage(data.message);
+      setAuthMessage(
+        "Registration successful. Please login."
+      );
 
-      connectWebSocket();
+      setAuthMessage(data.message);
 
     } catch (error) {
       setAuthMessage("Registration failed");
